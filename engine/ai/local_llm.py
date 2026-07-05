@@ -1,4 +1,8 @@
-from llama_cpp import Llama
+try:
+    from llama_cpp import Llama
+    HAS_LLAMA_CPP = True
+except ImportError:
+    HAS_LLAMA_CPP = False
 import os
 import json
 
@@ -7,7 +11,9 @@ class LLMEngine:
     MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models", "Llama-3.2-3B-Instruct-Q4_K_M.gguf")
     
     @classmethod
-    def get_model(cls) -> Llama:
+    def get_model(cls):
+        if not HAS_LLAMA_CPP:
+            return None
         if cls._model is None:
             if not os.path.exists(cls.MODEL_PATH):
                 raise FileNotFoundError(f"Model not found at {cls.MODEL_PATH}. Run download script.")
@@ -31,6 +37,8 @@ professional {context}. Return ONLY the enhanced text, nothing else.
 Rough: {rough_text}
 Professional:"""
         model = cls.get_model()
+        if not model:
+            return rough_text
         result = model(prompt, max_tokens=256, temperature=0.3, stop=["\n\n"])
         return result['choices'][0]['text'].strip()
     
@@ -56,6 +64,8 @@ Professional:"""
 Text: {text}
 Translation:"""
         model = cls.get_model()
+        if not model:
+            return text
         result = model(prompt, max_tokens=128, temperature=0.1, stop=["\n"])
         return result['choices'][0]['text'].strip().strip('"')
 
@@ -97,6 +107,8 @@ JSON: {{"intent": "mobile", "action": "check_battery", "target": null, "value": 
 Command: "{raw}"
 JSON:"""
         model = cls.get_model()
+        if not model:
+            return {"intent": "unknown", "action": None, "target": None, "value": None}
         
         # Compile grammar lazily
         if cls._parser_grammar is None:
@@ -204,6 +216,8 @@ ws ::= [ \t\n\r]*
         )
         
         model = cls.get_model()
+        if not model:
+            raise Exception("Local LLM not available")
         result = model(prompt, max_tokens=40, temperature=0.6, stop=["\n", "User:"])
         reply = result['choices'][0]['text'].strip()
         
