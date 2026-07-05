@@ -251,7 +251,7 @@ class AudioPipeline:
                     wav_io = io.BytesIO()
                     with wave.open(wav_io, 'wb') as wf:
                         wf.setnchannels(self.CHANNELS)
-                        wf.setsampwidth(self.pa.get_sample_size(self.FORMAT))
+                        wf.setsampwidth(2) # 16-bit PCM
                         wf.setframerate(self.RATE)
                         wf.writeframes(audio_buffer)
                     wav_io.seek(0)
