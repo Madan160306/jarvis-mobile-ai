@@ -66,8 +66,15 @@ class TTSEngine:
             if HAS_SF:
                 sf.write(audio_file, samples, sample_rate)
             else:
-                import scipy.io.wavfile as wavfile
-                wavfile.write(audio_file, sample_rate, samples)
+                import wave
+                import numpy as np
+                with wave.open(audio_file, 'wb') as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(sample_rate)
+                    # Convert float32 samples (-1 to 1) to int16
+                    int_samples = (samples * 32767).astype(np.int16)
+                    wf.writeframes(int_samples.tobytes())
             
             if HAS_PYGAME:
                 pygame.mixer.music.load(audio_file)

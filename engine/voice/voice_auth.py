@@ -1,7 +1,16 @@
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-import sounddevice as sd
-import librosa
+try:
+    from sklearn.metrics.pairwise import cosine_similarity
+    import librosa
+    HAS_BIOMETRICS = True
+except Exception:
+    HAS_BIOMETRICS = False
+
+try:
+    import sounddevice as sd
+    HAS_SD = True
+except Exception:
+    HAS_SD = False
 import os
 
 class VoiceAuthenticator:
@@ -18,6 +27,10 @@ class VoiceAuthenticator:
     
     def record_sample(self) -> np.ndarray:
         print("[*] Recording voice sample for authentication...")
+        if not HAS_SD:
+            print("[!] sounddevice not available for recording.")
+            return np.zeros(int(self.DURATION * self.SAMPLE_RATE))
+            
         audio = sd.rec(
             int(self.DURATION * self.SAMPLE_RATE),
             samplerate=self.SAMPLE_RATE,
@@ -36,7 +49,7 @@ class VoiceAuthenticator:
         return audio
     
     def extract_embedding(self, audio: np.ndarray) -> np.ndarray:
-        if np.all(audio == 0):
+        if np.all(audio == 0) or not HAS_BIOMETRICS:
             return np.zeros((1, 40))
             
         # Normalize and extract MFCC features
@@ -56,8 +69,8 @@ class VoiceAuthenticator:
         print("[+] Owner voice enrolled successfully.")
 
     def authenticate(self) -> bool:
-        if self.owner_embedding is None:
-            print("[-] No owner voice enrolled.")
+        if self.owner_embedding is None or not HAS_BIOMETRICS:
+            print("[-] No owner voice enrolled or biometrics disabled.")
             return False
             
         audio = self.record_sample()
@@ -71,8 +84,8 @@ class VoiceAuthenticator:
 
     def authenticate_buffer(self, audio: np.ndarray) -> bool:
         """Authenticates a pre-recorded audio buffer (float32 array)."""
-        if self.owner_embedding is None:
-            return True  # Open access if no owner enrolled
+        if self.owner_embedding is None or not HAS_BIOMETRICS:
+            return True  # Open access if no owner enrolled or if biometrics disabled (Termux Lite)
             
         if np.all(audio == 0):
             return False
