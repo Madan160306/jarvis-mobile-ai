@@ -47,8 +47,36 @@ class TTSEngine:
             return
 
         if kokoro == "TERMUX_LITE":
-            # Termux Lite Mode: Use native Android TTS engine with zero CPU overhead!
             import subprocess
+            
+            try:
+                from engine.network.network_utils import NetworkUtils
+                if NetworkUtils.is_online():
+                    import requests
+                    import urllib.parse
+                    import time
+                    
+                    # StreamElements Amazon Polly TTS (High Quality, Free)
+                    # Voice 'Brian' is an intelligent British Male voice, perfect for JARVIS
+                    safe_text = urllib.parse.quote(text)
+                    url = f"https://api.streamelements.com/kappa/v2/speech?voice=Brian&text={safe_text}"
+                    
+                    response = requests.get(url, timeout=5)
+                    if response.status_code == 200:
+                        mp3_path = f"temp_jk_cloud_{int(time.time()*1000)}.mp3"
+                        with open(mp3_path, "wb") as f:
+                            f.write(response.content)
+                            
+                        # Termux native media player
+                        subprocess.run(["play-audio", mp3_path], check=False)
+                        
+                        if os.path.exists(mp3_path):
+                            os.remove(mp3_path)
+                        return
+            except Exception as e:
+                print(f"[Cloud TTS] StreamElements fallback failed: {e}")
+
+            # Offline Fallback: Use native Android TTS engine
             try:
                 subprocess.run(["termux-tts-speak", text], check=True)
             except Exception as e:
