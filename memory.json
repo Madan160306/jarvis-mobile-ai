@@ -1,0 +1,107 @@
+{
+    "history": [
+        {
+            "timestamp": "2026-05-27T08:13:59.517233",
+            "user": "Turn on mobile hotspot",
+            "jk": "I'm not sure what you mean, but let me try to help. I'll use my command-line tools to execute the request, and I'll do my best to assist you. It may take"
+        },
+        {
+            "timestamp": "2026-05-27T08:16:40.435154",
+            "user": "turn on mobile hotspot",
+            "jk": "I'm not sure what you mean, but let me try to help. I'll use my command-line tools to execute the request, and I'll do my best to assist you. It may take"
+        },
+        {
+            "timestamp": "2026-05-27T08:17:27.841500",
+            "user": "Turn on airplane mode",
+            "jk": "I'm not sure what you mean, but let me try to help. I'll use my command-line tools to execute the request, and I'll do my best to assist you. It may take"
+        },
+        {
+            "timestamp": "2026-05-27T08:18:28.691353",
+            "user": "Set alarm for 7am tomorrow",
+            "jk": "I'm not sure what you mean, but let me try to help. I'll use my command-line tools to execute the request, and I'll do my best to assist you. It may take"
+        },
+        {
+            "timestamp": "2026-05-27T08:18:54.801542",
+            "user": "What is on my screen right now",
+            "jk": "Let me check. Here's what's on your screen:"
+        },
+        {
+            "timestamp": "2026-05-27T08:19:21.613307",
+            "user": "Search cricket on YouTube",
+            "jk": "Let's get \"Cricket\" by The Black Keys playing on YouTube Music. I'll use the command-line tool to search for the song and play it. Here's"
+        },
+        {
+            "timestamp": "2026-05-27T08:19:46.351495",
+            "user": "Turn on mobile hotspot",
+            "jk": "I'm not sure what you mean, but let me try to help. I'll use my command-line tools to execute the request, and I'll do my best to assist you. It may take"
+        },
+        {
+            "timestamp": "2026-05-27T08:29:33.727211",
+            "user": "Turn on airplane mode",
+            "jk": "I'm not sure what you mean, but let me try to help. I'll use my command-line tools to execute the request, and I'll do my best to assist you. It may take"
+        },
+        {
+            "timestamp": "2026-05-27T12:28:34.070797",
+            "user": "Who are you?",
+            "jk": "I'm JK, your virtual assistant. Let me know what you need."
+        },
+        {
+            "timestamp": "2026-05-27T12:28:34.070797",
+            "user": "Tell me a joke",
+            "jk": "What did the cell phone say to the charger? You make me feel alive!"
+        },
+        {
+            "timestamp": "2026-05-27T12:28:34.071806",
+            "user": "What can you do?",
+            "jk": "I can control your mobile settings, open apps, set reminders, manage emails, and talk with you. Anything you need, just ask."
+        },
+        {
+            "timestamp": "2026-05-27T16:11:06.616256",
+            "user": "Turn on airplane mode",
+            "jk": "Turn off airplane mode. What do you need to do for your exam? I'm here to help."
+        },
+        {
+            "timestamp": "2026-05-27T21:05:02.816687",
+            "user": "Turn on mobile hotspot.",
+            "jk": "Sorry, I'm not able to do that. Can you try connecting to a Wi-Fi network instead? How's your exam prep going? Do you need help with anything specific?"
+        },
+        {
+            "timestamp": "2026-06-19T18:33:50.769870",
+            "user": "You are the phonetic input normalizer and intent classifier for JK, a mobile voice assistant.\nThe user text is a voice transcript and may contain slurred speech, run-on words, or phonetic errors (e.g., 'kaltosandip' -> 'call Sandeep', 'turonwifi' -> 'turn on Wi-Fi', 'open setting' -> 'open settings').\n\nTask:\n1. Correct any spelling, word boundaries, and phonetic typos in the user text to make a clean, normalized command.\n2. Classify the intent into one of these categories:\n   - 'fast_path': Commands to toggle simple hardware settings (WiFi, brightness, volume, lock screen, bluetooth, airplane mode) or launch/open apps (e.g., 'open WhatsApp').\n   - 'phone_task': Complex multi-step actions on the phone/apps (e.g. 'send a WhatsApp message to Sandeep', 'play cricket videos on YouTube').\n   - 'chat': Conversational chat, questions, general requests, or small talk (e.g. 'how are you?', 'tell me a joke').\n\nUser Text: \"kaltosandip\"\n\nReply ONLY with a raw JSON object containing these keys:\n{\n  \"normalized_text\": \"<corrected clean text>\",\n  \"intent\": \"fast_path\" | \"phone_task\" | \"chat\"\n}",
+            "jk": "I'm doing great, feeling pretty good. How about you?"
+        },
+        {
+            "timestamp": "2026-06-19T18:35:29.497409",
+            "user": "You are JK, a warm AI assistant. Reply naturally: kaltosandip",
+            "jk": "\"kaltosandip\" is not a clear command. Can you try again? What's on your mind? Need help with something?"
+        },
+        {
+            "timestamp": "2026-06-19T18:35:31.290436",
+            "user": "You are the phonetic input normalizer and intent classifier for JK, a mobile voice assistant.\nThe user text is a voice transcript and may contain slurred speech, run-on words, or phonetic errors (e.g., 'kaltosandip' -> 'call Sandeep', 'turonwifi' -> 'turn on Wi-Fi', 'open setting' -> 'open settings').\n\nTask:\n1. Correct any spelling, word boundaries, and phonetic typos in the user text to make a clean, normalized command.\n2. Classify the intent into one of these categories:\n   - 'fast_path': Commands to toggle simple hardware settings (WiFi, brightness, volume, lock screen, bluetooth, airplane mode) or launch/open apps (e.g., 'open WhatsApp').\n   - 'phone_task': Complex multi-step actions on the phone/apps (e.g. 'send a WhatsApp message to Sandeep', 'play cricket videos on YouTube').\n   - 'chat': Conversational chat, questions, general requests, or small talk (e.g. 'how are you?', 'tell me a joke').\n\nUser Text: \"call to anddep\"\n\nReply ONLY with a raw JSON object containing these keys:\n{\n  \"normalized_text\": \"<corrected clean text>\",\n  \"intent\": \"fast_path\" | \"phone_task\" | \"chat\"\n}",
+            "jk": "I'm doing great, feeling pretty good. How about you?"
+        },
+        {
+            "timestamp": "2026-06-19T18:37:13.806678",
+            "user": "You are JK, a warm AI assistant. Reply naturally: call to anddep",
+            "jk": "{"
+        },
+        {
+            "timestamp": "2026-06-20T16:38:52.104340",
+            "user": "You are the phonetic input normalizer and intent classifier for JK, a mobile voice assistant.\nThe user text is a voice transcript and may contain slurred speech, run-on words, or phonetic typos.\n\nTask:\n1. Correct any spelling or phonetic typos to make a clean command.\n2. Classify the intent into one of these categories:\n   - 'vision': The user asks about what is currently on their screen (e.g. 'what is on my screen', 'summarize this page').\n   - 'fast_path': Commands to toggle hardware settings (WiFi, Bluetooth) or open apps, OR exact deep-link actions with explicit data (e.g. 'call 9876543210', 'play X on YouTube').\n   - 'phone_task': Complex multi-step GUI actions that require screen clicking, OR actions with missing explicit data (e.g. 'call Sandy', 'send a whatsapp to John'). Since we don't have John's number, we MUST use Mobilerun to visually search for John.\n   - 'chat': Conversational chat or questions.\n\nUser Text: \"Send hello to Santhik in WhatsApp.\"\n\nReply ONLY with a raw JSON object containing these keys:\n{\n  \"normalized_text\": \"<corrected clean text>\",\n  \"intent\": \"vision\" | \"fast_path\" | \"phone_task\" | \"chat\",\n  \"deep_link_action\": \"whatsapp_contact\" | \"youtube_search\" | \"phone_call\" | null,\n  \"deep_link_param\": \"<extracted param value, e.g. the phone NUMBER or youtube QUERY>\" | null\n}",
+            "jk": "Send hello to Santhik in WhatsApp."
+        },
+        {
+            "timestamp": "2026-07-02T13:39:24.250860",
+            "user": "You are the phonetic input normalizer and intent classifier for JK, a mobile voice assistant.\nThe user text is a voice transcript and may contain slurred speech, run-on words, or phonetic typos.\n\nTask:\n1. Correct any spelling or phonetic typos to make a clean command.\n2. Classify the intent into one of these categories:\n   - 'vision': The user asks about what is currently on their screen (e.g. 'what is on my screen', 'summarize this page').\n   - 'fast_path': Commands to toggle hardware settings (WiFi, Bluetooth) or open apps, OR exact deep-link actions with explicit data (e.g. 'call 9876543210', 'play X on YouTube').\n   - 'phone_task': Complex multi-step GUI actions that require screen clicking, OR actions with missing explicit data (e.g. 'call Sandy', 'send a whatsapp to John'). Since we don't have John's number, we MUST use Mobilerun to visually search for John.\n   - 'chat': Conversational chat or questions.\n\nUser Text: \"Carl Tous Andeep.\"\n\nReply ONLY with a raw JSON object containing these keys:\n{\n  \"normalized_text\": \"<corrected clean text>\",\n  \"intent\": \"vision\" | \"fast_path\" | \"phone_task\" | \"chat\",\n  \"deep_link_action\": \"whatsapp_contact\" | \"youtube_search\" | \"phone_call\" | null,\n  \"deep_link_param\": \"<extracted param value, e.g. the phone NUMBER or youtube QUERY>\" | null\n}",
+            "jk": "{"
+        },
+        {
+            "timestamp": "2026-07-02T13:40:59.954887",
+            "user": "You are JK, a warm AI assistant. Reply naturally: Carl Tous Andeep.",
+            "jk": "Hi! I'm doing great, thanks for asking! You were trying to call someone, but I'm not sure"
+        }
+    ],
+    "facts": [
+        "User has an exam coming up"
+    ]
+}

@@ -1,0 +1,10 @@
+config/jk_config.yaml
+config.json
+*.env
+*.key
+
+__pycache__/
+models/
+owner_voice.npy
+jarvis-env/
+venv/
