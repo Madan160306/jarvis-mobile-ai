@@ -1,11 +1,11 @@
 import os
 import time
-import pygame
-import soundfile as sf
-import traceback
-
-# Initialize pygame mixer for audio playback
-pygame.mixer.init()
+try:
+    import pygame
+    pygame.mixer.init()
+    HAS_PYGAME = True
+except Exception:
+    HAS_PYGAME = False
 
 class TTSEngine:
     _kokoro = None
@@ -59,12 +59,17 @@ class TTSEngine:
             audio_file = f"temp_jk_{int(time.time()*1000)}.wav"
             sf.write(audio_file, samples, sample_rate)
             
-            pygame.mixer.music.load(audio_file)
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy():
-                pygame.time.Clock().tick(30)
-                
-            pygame.mixer.music.unload()
+            if HAS_PYGAME:
+                pygame.mixer.music.load(audio_file)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy():
+                    pygame.time.Clock().tick(30)
+                    
+                pygame.mixer.music.unload()
+            else:
+                # Termux fallback for playing audio file if pygame fails
+                import subprocess
+                subprocess.run(["play-audio", audio_file], check=False)
             
             # Cleanup
             time.sleep(0.05)

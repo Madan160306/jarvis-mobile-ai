@@ -313,14 +313,20 @@ class InterruptibleSpeaker:
         # Since Kokoro in tts_engine creates audio files and blocks via pygame.time.Clock(), 
         # stopping pygame mixer will break the get_busy() loop.
         
-        import pygame
+        try:
+            import pygame
+            HAS_PYGAME = True
+        except ImportError:
+            HAS_PYGAME = False
+            
         sentences = [s.strip() for s in text.split('.') if s.strip()]
         if not sentences:
             sentences = [text]
             
         for sentence in sentences:
             if cls._interrupt_flag:
-                pygame.mixer.music.stop()
+                if HAS_PYGAME:
+                    pygame.mixer.music.stop()
                 cls._speaking = False
                 return True
                 
@@ -328,7 +334,8 @@ class InterruptibleSpeaker:
             
             # Re-check flag after the sentence finishes
             if cls._interrupt_flag:
-                pygame.mixer.music.stop()
+                if HAS_PYGAME:
+                    pygame.mixer.music.stop()
                 cls._speaking = False
                 return True
                 
@@ -385,8 +392,11 @@ class InterruptibleSpeaker:
                     
                 if consecutive_speech >= 4:
                     cls._interrupt_flag = True
-                    import pygame
-                    pygame.mixer.music.stop()
+                    try:
+                        import pygame
+                        pygame.mixer.music.stop()
+                    except ImportError:
+                        pass
                     break
         except Exception as e:
             print(f"[VAD Interrupt] Error: {e}")
