@@ -5,7 +5,7 @@ echo "=== JARVIS Termux Setup ==="
 pkg update -y
 pkg install -y python git termux-api \
   portaudio python-pyaudio \
-  onnxruntime clang wget unzip
+  clang wget unzip python-numpy python-scipy
 
 # Python packages (lightweight only)
 pip install --upgrade pip
@@ -14,10 +14,7 @@ pip install groq
 pip install requests
 pip install pyyaml
 pip install chromadb
-pip install openwakeword
 pip install sounddevice
-pip install numpy
-pip install scipy
 
 # Download vosk small model
 mkdir -p models
