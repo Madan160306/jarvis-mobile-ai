@@ -1,5 +1,11 @@
 import os
 import time
+import traceback
+try:
+    import soundfile as sf
+    HAS_SF = True
+except Exception:
+    HAS_SF = False
 try:
     import pygame
     pygame.mixer.init()
@@ -57,7 +63,11 @@ class TTSEngine:
             
             # Save and play immediately
             audio_file = f"temp_jk_{int(time.time()*1000)}.wav"
-            sf.write(audio_file, samples, sample_rate)
+            if HAS_SF:
+                sf.write(audio_file, samples, sample_rate)
+            else:
+                import scipy.io.wavfile as wavfile
+                wavfile.write(audio_file, sample_rate, samples)
             
             if HAS_PYGAME:
                 pygame.mixer.music.load(audio_file)
