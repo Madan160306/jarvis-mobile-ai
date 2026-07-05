@@ -83,6 +83,14 @@ class WakeWordEngine:
                     return True
             return False
             
+        elif self.engine == "manual":
+            # FALLBACK: If no wake word engine, trigger on sudden loud noise (Amplitude Threshold)
+            rms = np.sqrt(np.mean(np.square(audio_chunk, dtype=np.float64)))
+            if rms > 1500.0:  # Arbitrary threshold for "loud noise"
+                print(f"[WakeWord] Loud noise detected (RMS: {rms:.1f}), triggering JARVIS...")
+                return True
+            return False
+            
         return False
 
     def reset(self):

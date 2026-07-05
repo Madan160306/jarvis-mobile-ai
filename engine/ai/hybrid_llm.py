@@ -3,7 +3,6 @@ import yaml
 import json
 import datetime
 import requests
-from groq import Groq
 from engine.network.network_utils import NetworkUtils
 from engine.ai.local_llm import LLMEngine
 from engine.personality.emotion_detector import EmotionDetector
@@ -49,14 +48,12 @@ class HybridLLM:
         return cls._config
 
     @classmethod
-    def get_groq_client(cls):
-        if cls._groq_client is None:
-            config = cls._load_config()
-            api_key = config.get("groq_api_key", "")
-            if not api_key:
-                raise ValueError("Groq API key not found in config.")
-            cls._groq_client = Groq(api_key=api_key)
-        return cls._groq_client
+    def get_api_key(cls, provider: str = "groq"):
+        config = cls._load_config()
+        if provider == "groq":
+            key = config.get("groq_api_key", "")
+            return key
+        return ""
 
     @classmethod
     def _can_use_online(cls) -> bool:
@@ -285,10 +282,15 @@ class HybridLLM:
         # 1. Try Groq (Llama 4 Scout Multimodal)
         if config.get("groq_api_key"):
             try:
-                print("[HybridLLM] Trying Groq Vision (meta-llama/llama-4-scout-17b-16e-instruct)...")
-                client = cls.get_groq_client()
-                response = client.chat.completions.create(
-                    messages=[
+                print("[HybridLLM] Trying Groq Vision (llama-3.2-90b-vision-preview)...")
+                api_key = config.get("groq_api_key")
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "model": "llama-3.2-90b-vision-preview",
+                    "messages": [
                         {
                             "role": "user",
                             "content": [
@@ -302,12 +304,14 @@ class HybridLLM:
                             ],
                         }
                     ],
-                    model="meta-llama/llama-4-scout-17b-16e-instruct",
-                    response_format=response_format,
-                    max_tokens=max_tokens,
-                    timeout=15.0
-                )
-                return response.choices[0].message.content.strip()
+                    "max_tokens": max_tokens
+                }
+                if response_format:
+                    data["response_format"] = response_format
+                    
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=15.0)
+                res.raise_for_status()
+                return res.json()["choices"][0]["message"]["content"].strip()
             except Exception as e:
                 err_msg = f"Groq Vision failed: {e}"
                 print(f"[HybridLLM] {err_msg}")

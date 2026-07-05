@@ -1,10 +1,21 @@
 import time
 import collections
-import pyaudio
 import numpy as np
 import audioop
 import sys
 import os
+
+try:
+    import pyaudio
+    HAS_PYAUDIO = True
+except ImportError:
+    HAS_PYAUDIO = False
+    
+try:
+    import sounddevice as sd
+    HAS_SD = True
+except ImportError:
+    HAS_SD = False
 
 import collections
 from engine.voice.wake_word import WakeWordEngine
@@ -36,8 +47,9 @@ class AudioPipeline:
         asr_model = self.config.get("asr_model", "base.en")
         self.asr_engine = HybridVoiceEngine(model_size=asr_model)
         
-        self.pa = pyaudio.PyAudio()
-        self.FORMAT = pyaudio.paInt16
+        if HAS_PYAUDIO:
+            self.pa = pyaudio.PyAudio()
+        self.FORMAT = pyaudio.paInt16 if HAS_PYAUDIO else 'int16'
         self.CHANNELS = 1
         self.RATE = 16000
         # Openwakeword prefers 1280 samples per chunk (80ms at 16kHz)
@@ -62,17 +74,24 @@ class AudioPipeline:
         2. AWAKE: Beep, then collect chunks until VAD detects silence.
         3. TRANSCRIBING: Send collected buffer to ASR.
         """
-        stream = self.pa.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            start=False,
-            frames_per_buffer=self.CHUNK_SIZE
-        )
-        
+        if HAS_PYAUDIO:
+            stream = self.pa.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.RATE,
+                input=True,
+                start=False,
+                frames_per_buffer=self.CHUNK_SIZE
+            )
+            stream.start_stream()
+        elif HAS_SD:
+            stream = sd.InputStream(samplerate=self.RATE, channels=self.CHANNELS, dtype=self.FORMAT, blocksize=self.CHUNK_SIZE)
+            stream.start()
+        else:
+            print("[ERROR] Neither pyaudio nor sounddevice is installed. Cannot record.")
+            return
+
         self.wake_engine.reset()
-        stream.start_stream()
         print("[PIPELINE] 💤 Listening for wake word...")
         
         state = "DORMANT"
@@ -86,8 +105,11 @@ class AudioPipeline:
         
         try:
             while True:
-                # Read audio chunk
-                chunk = stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
+                if HAS_PYAUDIO:
+                    chunk = stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
+                else:
+                    chunk, overflow = stream.read(self.CHUNK_SIZE)
+                    chunk = chunk.flatten().tobytes()
                 
                 if state == "DORMANT":
                     # Convert to numpy array for porcupine wrapper
@@ -127,7 +149,10 @@ class AudioPipeline:
                     print("[PIPELINE] 🎙️ Processing command...")
                     # Stop recording during processing and TTS playback to avoid hearing itself
                     try:
-                        stream.stop_stream()
+                        if HAS_PYAUDIO:
+                            stream.stop_stream()
+                        elif HAS_SD:
+                            stream.stop()
                     except Exception as e:
                         print(f"[PIPELINE] Warning: failed to stop stream: {e}")
 
@@ -148,10 +173,14 @@ class AudioPipeline:
                     
                     # Restart the stream to resume listening (flushes any stale buffer data)
                     try:
-                        stream.start_stream()
-                        # Discard first few chunks to skip initialization pops/clicks
-                        for _ in range(2):
-                            stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
+                        if HAS_PYAUDIO:
+                            stream.start_stream()
+                            for _ in range(2):
+                                stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
+                        elif HAS_SD:
+                            stream.start()
+                            for _ in range(2):
+                                stream.read(self.CHUNK_SIZE)
                     except Exception as e:
                         print(f"[PIPELINE] Warning: failed to start stream: {e}")
 
@@ -164,8 +193,15 @@ class AudioPipeline:
         except KeyboardInterrupt:
             print("[PIPELINE] Stopped.")
         finally:
-            stream.stop_stream()
-            stream.close()
+            try:
+                if HAS_PYAUDIO:
+                    stream.stop_stream()
+                    stream.close()
+                elif HAS_SD:
+                    stream.stop()
+                    stream.close()
+            except:
+                pass
 
     def _transcribe_buffer(self, audio_buffer: bytearray):
         """Extract the transcription logic from hybrid_asr to process a direct buffer."""
@@ -206,14 +242,34 @@ class AudioPipeline:
                         wf.writeframes(audio_buffer)
                     wav_io.seek(0)
                     
-                    client = HybridLLM.get_groq_client()
-                    transcription = client.audio.transcriptions.create(
-                        file=("audio.wav", wav_io.read()),
-                        model="whisper-large-v3-turbo",
-                        language="en",
-                        prompt="Hey JARVIS. JARVIS is an AI assistant."
+                    import requests
+                    
+                    api_key = HybridLLM.get_api_key("groq")
+                    if not api_key:
+                        raise ValueError("Groq API key missing")
+                        
+                    files = {
+                        "file": ("audio.wav", wav_io.read(), "audio/wav"),
+                    }
+                    data = {
+                        "model": "whisper-large-v3-turbo",
+                        "language": "en",
+                        "prompt": "Hey JARVIS. JARVIS is an AI assistant."
+                    }
+                    
+                    response = requests.post(
+                        "https://api.groq.com/openai/v1/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        files=files,
+                        data=data
                     )
-                    text = transcription.text.strip()
+                    
+                    if response.status_code == 200:
+                        transcription_text = response.json().get("text", "")
+                    else:
+                        raise Exception(f"Groq API error: {response.text}")
+                        
+                    text = transcription_text.strip()
                     clean_check = text.lower().strip()
                     
                     hallucinations = ["thank you.", "thanks.", "hello.", "bye.", "goodbye."]

@@ -1,8 +1,19 @@
 import os
 import time
 import numpy as np
-import pyaudio
 import collections
+
+try:
+    import pyaudio
+    HAS_PYAUDIO = True
+except ImportError:
+    HAS_PYAUDIO = False
+    
+try:
+    import sounddevice as sd
+    HAS_SD = True
+except ImportError:
+    HAS_SD = False
 try:
     from faster_whisper import WhisperModel
     HAS_LOCAL_WHISPER = True
@@ -67,44 +78,44 @@ class HybridVoiceEngine:
 
     def listen(self) -> tuple[str, str]:
         """Returns a tuple of (transcribed_text, detected_language_code)"""
-        if not self.model:
-            return ("", "en")
+        if not self.model and getattr(self, "vosk_model", None) is None and not HAS_LOCAL_WHISPER:
+            # We still allow Groq cloud ASR even if local is missing
+            pass
             
-        stream = self.pa.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            start=False,
-            frames_per_buffer=self.CHUNK_SIZE
-        )
-
-        stream.start_stream()
-
-        stream.start_stream()
-
         ring_buffer = collections.deque(maxlen=int(0.5 * self.RATE / self.CHUNK_SIZE)) # 0.5s pre-speech buffer
         audio_buffer = bytearray()
-        
         triggered = False
         
         if self.has_vad:
             from silero_vad import VADIterator
             import torch
-            # 600ms of silence required to stop recording
             vad_iterator = VADIterator(self.vad_model, sampling_rate=16000, min_silence_duration_ms=600, threshold=0.5)
         else:
             vad_iterator = None
             
         try:
-            while True:
-                chunk = stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
+            if HAS_PYAUDIO:
+                pa = pyaudio.PyAudio()
+                stream = pa.open(format=pyaudio.paInt16, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK_SIZE)
+                stream.start_stream()
+            elif HAS_SD:
+                stream = sd.InputStream(samplerate=self.RATE, channels=self.CHANNELS, dtype='int16', blocksize=self.CHUNK_SIZE)
+                stream.start()
+            else:
+                print("[ERROR] Neither pyaudio nor sounddevice is installed. Cannot record.")
+                return ("", "en")
                 
-                if self.has_vad:
-                    # Convert to float32 tensor for Silero
+            while True:
+                if HAS_PYAUDIO:
+                    chunk = stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
                     audio_int16 = np.frombuffer(chunk, np.int16)
-                    audio_float32 = torch.from_numpy(audio_int16.astype(np.float32) / 32768.0)
+                else:
+                    chunk, overflowed = stream.read(self.CHUNK_SIZE)
+                    audio_int16 = chunk.flatten()
+                    chunk = audio_int16.tobytes()
                     
+                if self.has_vad:
+                    audio_float32 = torch.from_numpy(audio_int16.astype(np.float32) / 32768.0)
                     speech_dict = vad_iterator(audio_float32)
                     
                     if not triggered:
@@ -118,19 +129,23 @@ class HybridVoiceEngine:
                         if speech_dict is not None and "end" in speech_dict:
                             break # End of phrase
                 else:
-                    # Fallback if no VAD (Termux Lite): just record fixed 3.0 seconds
+                    # Fallback if no VAD (Termux Lite): just record fixed 4.0 seconds
                     audio_buffer.extend(chunk)
-                    if len(audio_buffer) >= self.RATE * 2 * 3.0:
+                    if len(audio_buffer) >= self.RATE * 2 * 4.0:
                         break
                         
-                # Hard limit 10 seconds max to prevent infinite recording
-                    if len(audio_buffer) > self.RATE * 2 * 10:
-                        break
+                if len(audio_buffer) > self.RATE * 2 * 10:
+                    break
         except Exception as e:
             print(f"[ASR] Error during streaming: {e}")
         finally:
-            stream.stop_stream()
-            stream.close()
+            if HAS_PYAUDIO:
+                stream.stop_stream()
+                stream.close()
+                pa.terminate()
+            elif HAS_SD:
+                stream.stop()
+                stream.close()
             
         # If audio is too short (less than 0.15 seconds), it's just a click or noise.
         # Skip Whisper inference entirely to prevent 2-3 seconds of lag!
@@ -174,14 +189,34 @@ class HybridVoiceEngine:
                         wf.writeframes(audio_buffer)
                     wav_io.seek(0)
                     
-                    client = HybridLLM.get_groq_client()
-                    transcription = client.audio.transcriptions.create(
-                        file=("audio.wav", wav_io.read()),
-                        model="whisper-large-v3-turbo",
-                        language="en",
-                        prompt="Hey JARVIS. JARVIS is an AI assistant. Commands include: send WhatsApp, call to Sandeep, send message to Sandeep, check battery, lock phone, open app, play YT Music, YouTube Music, play Dudue OST."
+                    import requests
+                    
+                    api_key = HybridLLM.get_api_key("groq")
+                    if not api_key:
+                        raise ValueError("Groq API key missing")
+                        
+                    files = {
+                        "file": ("audio.wav", wav_io.read(), "audio/wav"),
+                    }
+                    data = {
+                        "model": "whisper-large-v3-turbo",
+                        "language": "en",
+                        "prompt": "Hey JARVIS. JARVIS is an AI assistant."
+                    }
+                    
+                    response = requests.post(
+                        "https://api.groq.com/openai/v1/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        files=files,
+                        data=data
                     )
-                    text = transcription.text.strip()
+                    
+                    if response.status_code == 200:
+                        transcription_text = response.json().get("text", "")
+                    else:
+                        raise Exception(f"Groq API error: {response.text}")
+                        
+                    text = transcription_text.strip()
                     clean_check = text.lower().strip()
                     
                     if "jarvis is an ai assistant" in clean_check or "thanks for watching" in clean_check or "thank you for watching" in clean_check:
@@ -249,9 +284,7 @@ class HybridVoiceEngine:
             
         return ("", "en")
         
-    def __del__(self):
-        if hasattr(self, 'pa'):
-            self.pa.terminate()
+        return ("", "en")
 
 import threading
 from engine.voice.tts_engine import TTSEngine
@@ -312,37 +345,40 @@ class InterruptibleSpeaker:
             vad_model = None
             has_vad = False
         
-        pa = pyaudio.PyAudio()
-        # Silero processes optimally in 512 chunks
-        CHUNK = 512
-        stream = pa.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=CHUNK)
-        
         try:
+            if HAS_PYAUDIO:
+                pa = pyaudio.PyAudio()
+                stream = pa.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=CHUNK)
+            elif HAS_SD:
+                stream = sd.InputStream(samplerate=16000, channels=1, dtype='int16', blocksize=CHUNK)
+                stream.start()
+            else:
+                return # Can't interrupt if no microphone access
+                
             # Give a 0.5s grace period so we don't instantly interrupt from the speaker pop
             import time
             time.sleep(0.5)
             
             consecutive_speech = 0
             while cls._speaking:
-                chunk = stream.read(CHUNK, exception_on_overflow=False)
+                if HAS_PYAUDIO:
+                    chunk = stream.read(CHUNK, exception_on_overflow=False)
+                    audio_int16 = np.frombuffer(chunk, np.int16)
+                else:
+                    chunk, overflow = stream.read(CHUNK)
+                    audio_int16 = chunk.flatten()
                 
                 if has_vad:
-                    audio_int16 = np.frombuffer(chunk, np.int16)
                     audio_float32 = torch.from_numpy(audio_int16.astype(np.float32) / 32768.0)
-                    
-                    # Model outputs probability of speech. Echo/noise is usually near 0.0
                     prob = vad_model(audio_float32, 16000).item()
                     
-                    # A very firm threshold ensuring it's clearly a user speaking directly
                     if prob > 0.8:
                         consecutive_speech += 1
                     else:
                         consecutive_speech = 0
                 else:
-                    # In Lite mode, we can't do VAD interrupt effectively, just disable self-interrupt
                     consecutive_speech = 0
                     
-                # If we get 4 consecutive frames of firm speech (about 120ms), trigger interrupt
                 if consecutive_speech >= 4:
                     cls._interrupt_flag = True
                     import pygame
@@ -351,6 +387,10 @@ class InterruptibleSpeaker:
         except Exception as e:
             print(f"[VAD Interrupt] Error: {e}")
         finally:
-            stream.stop_stream()
-            stream.close()
-            pa.terminate()
+            if HAS_PYAUDIO:
+                stream.stop_stream()
+                stream.close()
+                pa.terminate()
+            elif HAS_SD:
+                stream.stop()
+                stream.close()
