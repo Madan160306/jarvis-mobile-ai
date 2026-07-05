@@ -21,7 +21,11 @@ except ImportError:
     HAS_LOCAL_WHISPER = False
     print("[ASR] faster_whisper not installed. Defaulting to Cloud ASR (Termux Lite Mode).")
 
-import noisereduce
+try:
+    import noisereduce
+    HAS_NOISEREDUCE = True
+except Exception:
+    HAS_NOISEREDUCE = False
 
 class HybridVoiceEngine:
     def __init__(self, model_size=None):
@@ -159,12 +163,12 @@ class HybridVoiceEngine:
         
         # Apply noise reduction based on config setting
         noise_red = self.config.get("noise_reduction", "stationary")
-        if noise_red == "stationary":
+        if HAS_NOISEREDUCE and noise_red == "stationary":
             try:
                 audio_np = noisereduce.reduce_noise(y=audio_np, sr=16000, stationary=True, prop_decrease=0.2)
             except:
                 pass
-        elif noise_red == "non-stationary":
+        elif HAS_NOISEREDUCE and noise_red == "non-stationary":
             try:
                 audio_np = noisereduce.reduce_noise(y=audio_np, sr=16000, stationary=False, prop_decrease=0.2)
             except:

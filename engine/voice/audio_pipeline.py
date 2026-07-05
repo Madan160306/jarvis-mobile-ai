@@ -1,7 +1,6 @@
 import time
 import collections
 import numpy as np
-import audioop
 import sys
 import os
 
@@ -216,7 +215,11 @@ class AudioPipeline:
 
     def _transcribe_buffer(self, audio_buffer: bytearray):
         """Extract the transcription logic from hybrid_asr to process a direct buffer."""
-        import noisereduce
+        try:
+            import noisereduce
+            HAS_NOISEREDUCE = True
+        except Exception:
+            HAS_NOISEREDUCE = False
         
         if len(audio_buffer) < int(self.RATE * 2 * 0.15):
             return ("", "en")
@@ -226,12 +229,12 @@ class AudioPipeline:
         
         # Apply noise reduction based on config setting
         noise_red = self.config.get("noise_reduction", "stationary")
-        if noise_red == "stationary":
+        if HAS_NOISEREDUCE and noise_red == "stationary":
             try:
                 audio_np = noisereduce.reduce_noise(y=audio_np, sr=self.RATE, stationary=True, prop_decrease=0.2)
             except:
                 pass
-        elif noise_red == "non-stationary":
+        elif HAS_NOISEREDUCE and noise_red == "non-stationary":
             try:
                 audio_np = noisereduce.reduce_noise(y=audio_np, sr=self.RATE, stationary=False, prop_decrease=0.2)
             except:
