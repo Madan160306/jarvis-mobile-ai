@@ -2,7 +2,11 @@ import time
 import subprocess
 import base64
 import io
-from PIL import Image
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
 from engine.device.adb_helper import ADBHelper
 
 class AndroidController:
@@ -86,14 +90,18 @@ class AndroidController:
             if res.returncode != 0 or not res.stdout:
                 return ""
                 
-            img = Image.open(io.BytesIO(res.stdout))
-            img = img.convert("RGB")
-            img.thumbnail((512, 512))
-            
-            buffered = io.BytesIO()
-            img.save(buffered, format="JPEG", quality=85)
-            b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-            return b64
+            if HAS_PIL:
+                img = Image.open(io.BytesIO(res.stdout))
+                img = img.convert("RGB")
+                img.thumbnail((512, 512))
+                
+                buffered = io.BytesIO()
+                img.save(buffered, format="JPEG", quality=85)
+                b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+                return b64
+            else:
+                # Fallback: Just return the raw full-resolution PNG as base64
+                return base64.b64encode(res.stdout).decode("utf-8")
         except Exception as e:
             print(f"Screenshot Error: {e}")
             return ""
@@ -149,23 +157,26 @@ class AndroidController:
             
             # Phase 2: Semantic Healing (AI Path)
             print(f"[AndroidController] '{target_text}' not found. Initiating Self-Healing UI Loop...")
-            from sentence_transformers import SentenceTransformer, util
-            # Load the local model (offline, fast cache)
-            encoder = SentenceTransformer('all-MiniLM-L6-v2', device='cpu', local_files_only=True)
-            
-            target_vec = encoder.encode(target_text)
-            best_match = None
-            highest_score = -1.0
-            
-            for el in elements:
-                # Discard extremely short/symbol labels to prevent junk matching
-                if len(el["label"]) < 2: continue
+            try:
+                from sentence_transformers import SentenceTransformer, util
+                # Load the local model (offline, fast cache)
+                encoder = SentenceTransformer('all-MiniLM-L6-v2', device='cpu', local_files_only=True)
                 
-                el_vec = encoder.encode(el["label"])
-                score = util.cos_sim(target_vec, el_vec).item()
-                if score > highest_score:
-                    highest_score = score
-                    best_match = el
+                target_vec = encoder.encode(target_text)
+                best_match = None
+                highest_score = -1.0
+                
+                for el in elements:
+                    # Discard extremely short/symbol labels to prevent junk matching
+                    if len(el["label"]) < 2: continue
+                    
+                    el_vec = encoder.encode(el["label"])
+                    score = util.cos_sim(target_vec, el_vec).item()
+                    if score > highest_score:
+                        highest_score = score
+                        best_match = el
+            except ImportError:
+                return f"Failed to tap '{target_text}'. Semantic Healing disabled (sentence_transformers not installed)."
                     
             if best_match and highest_score > 0.40:
                 print(f"[AndroidController] Healed! Found '{best_match['label']}' (Score: {highest_score:.2f})")
