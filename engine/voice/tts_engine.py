@@ -57,9 +57,9 @@ class TTSEngine:
                     import time
                     
                     # StreamElements Amazon Polly TTS (High Quality, Free)
-                    # Voice 'Brian' is an intelligent British Male voice, perfect for JARVIS
+                    # Voice 'Salli' is a high-quality American Female voice (since Jenny isn't available on Amazon Polly)
                     safe_text = urllib.parse.quote(text)
-                    url = f"https://api.streamelements.com/kappa/v2/speech?voice=Brian&text={safe_text}"
+                    url = f"https://api.streamelements.com/kappa/v2/speech?voice=Salli&text={safe_text}"
                     
                     response = requests.get(url, timeout=5)
                     if response.status_code == 200:
