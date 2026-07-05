@@ -70,8 +70,8 @@ class VoiceAuthenticator:
 
     def authenticate(self) -> bool:
         if self.owner_embedding is None or not HAS_BIOMETRICS:
-            print("[-] No owner voice enrolled or biometrics disabled.")
-            return False
+            print("[-] No owner voice enrolled or biometrics disabled. Bypassing auth.")
+            return True
             
         audio = self.record_sample()
         if np.all(audio == 0):
