@@ -55,8 +55,13 @@ class AudioPipeline:
         self.CHUNK_SIZE = 1280 
         
         # Neural VAD for detecting end of command
-        from silero_vad import load_silero_vad
-        self.vad_model = load_silero_vad(onnx=True)
+        try:
+            from silero_vad import load_silero_vad
+            self.vad_model = load_silero_vad(onnx=True)
+            self.has_vad = True
+        except ImportError:
+            self.vad_model = None
+            self.has_vad = False
         
         # Load voice biometrics profile
         owner_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "owner_voice.npy")
@@ -107,11 +112,15 @@ class AudioPipeline:
         state = "DORMANT"
         command_buffer = bytearray()
         
-        from silero_vad import VADIterator
-        import torch
-        # Reset iterator
-        vad_iterator = VADIterator(self.vad_model, sampling_rate=16000, min_silence_duration_ms=600, threshold=0.5)
-        vad_position = 0
+        if self.has_vad:
+            from silero_vad import VADIterator
+            import torch
+            # Reset iterator
+            vad_iterator = VADIterator(self.vad_model, sampling_rate=16000, min_silence_duration_ms=600, threshold=0.5)
+            vad_position = 0
+        else:
+            vad_iterator = None
+            vad_position = 0
         
         try:
             while True:
@@ -132,24 +141,30 @@ class AudioPipeline:
                         self.wake_engine.reset()
                         state = "AWAKE"
                         command_buffer.clear()
-                        vad_iterator = VADIterator(self.vad_model, sampling_rate=16000, min_silence_duration_ms=600, threshold=0.5)
-                        vad_position = 0
+                        if self.has_vad:
+                            vad_iterator = VADIterator(self.vad_model, sampling_rate=16000, min_silence_duration_ms=600, threshold=0.5)
+                            vad_position = 0
                         
                 elif state == "AWAKE":
                     command_buffer.extend(chunk)
                     
-                    # Feed exactly 512 samples (1024 bytes) into Silero VAD
-                    while len(command_buffer) - vad_position >= 1024:
-                        vad_chunk = command_buffer[vad_position:vad_position+1024]
-                        vad_position += 1024
-                        
-                        audio_int16 = np.frombuffer(vad_chunk, np.int16)
-                        audio_float32 = torch.from_numpy(audio_int16.astype(np.float32) / 32768.0)
-                        
-                        speech_dict = vad_iterator(audio_float32)
-                        if speech_dict is not None and "end" in speech_dict:
+                    if self.has_vad:
+                        # Feed exactly 512 samples (1024 bytes) into Silero VAD
+                        while len(command_buffer) - vad_position >= 1024:
+                            vad_chunk = command_buffer[vad_position:vad_position+1024]
+                            vad_position += 1024
+                            
+                            audio_int16 = np.frombuffer(vad_chunk, np.int16)
+                            audio_float32 = torch.from_numpy(audio_int16.astype(np.float32) / 32768.0)
+                            
+                            speech_dict = vad_iterator(audio_float32)
+                            if speech_dict is not None and "end" in speech_dict:
+                                state = "TRANSCRIBING"
+                                break
+                    else:
+                        # No VAD: hardcode 4 second record limit
+                        if len(command_buffer) > self.RATE * 2 * 4.0:
                             state = "TRANSCRIBING"
-                            break
                             
                     # Hard limit 10 seconds max to prevent infinite recording
                     if len(command_buffer) > self.RATE * 2 * 10:
