@@ -6,13 +6,13 @@ import collections
 try:
     import pyaudio
     HAS_PYAUDIO = True
-except ImportError:
+except Exception:
     HAS_PYAUDIO = False
     
 try:
     import sounddevice as sd
     HAS_SD = True
-except ImportError:
+except Exception:
     HAS_SD = False
 try:
     from faster_whisper import WhisperModel

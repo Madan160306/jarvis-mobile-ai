@@ -8,13 +8,13 @@ import os
 try:
     import pyaudio
     HAS_PYAUDIO = True
-except ImportError:
+except Exception:
     HAS_PYAUDIO = False
     
 try:
     import sounddevice as sd
     HAS_SD = True
-except ImportError:
+except Exception:
     HAS_SD = False
 
 import collections
@@ -88,7 +88,18 @@ class AudioPipeline:
             stream = sd.InputStream(samplerate=self.RATE, channels=self.CHANNELS, dtype=self.FORMAT, blocksize=self.CHUNK_SIZE)
             stream.start()
         else:
-            print("[ERROR] Neither pyaudio nor sounddevice is installed. Cannot record.")
+            print("[PIPELINE] No streaming audio library found. Using Termux Speech-to-Text Fallback.")
+            import subprocess
+            while True:
+                input("\n[Termux Mode] Press ENTER to speak to JARVIS...")
+                print("Listening...")
+                try:
+                    # Uses Android's native speech recognition dialog!
+                    result = subprocess.check_output(["termux-speech-to-text"]).decode("utf-8").strip()
+                    if result:
+                        yield result, "en"
+                except Exception as e:
+                    print(f"[Termux ASR Error] {e}")
             return
 
         self.wake_engine.reset()
