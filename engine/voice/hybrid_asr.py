@@ -350,12 +350,21 @@ class InterruptibleSpeaker:
     def _listen_for_interrupt(cls):
         # Neural Voice Activity Detection (Silero VAD) replaces WebRTC VAD
         # This completely solves Acoustic Echo (falsely interrupting self) and fan noise.
-        import torch
+        try:
+            import torch
+            HAS_TORCH = True
+        except ImportError:
+            HAS_TORCH = False
+            
         import numpy as np
         try:
-            from silero_vad import load_silero_vad
-            vad_model = load_silero_vad(onnx=True)
-            has_vad = True
+            if HAS_TORCH:
+                from silero_vad import load_silero_vad
+                vad_model = load_silero_vad(onnx=True)
+                has_vad = True
+            else:
+                vad_model = None
+                has_vad = False
         except ImportError:
             vad_model = None
             has_vad = False
@@ -383,7 +392,7 @@ class InterruptibleSpeaker:
                     chunk, overflow = stream.read(CHUNK)
                     audio_int16 = chunk.flatten()
                 
-                if has_vad:
+                if has_vad and HAS_TORCH:
                     audio_float32 = torch.from_numpy(audio_int16.astype(np.float32) / 32768.0)
                     prob = vad_model(audio_float32, 16000).item()
                     
@@ -392,6 +401,8 @@ class InterruptibleSpeaker:
                     else:
                         consecutive_speech = 0
                 else:
+                    # Without VAD or Torch, we can't reliably detect speech interrupts using just RMS,
+                    # so we'll just not interrupt.
                     consecutive_speech = 0
                     
                 if consecutive_speech >= 4:
