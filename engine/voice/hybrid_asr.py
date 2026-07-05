@@ -73,8 +73,12 @@ class HybridVoiceEngine:
             self.vad_model = None
             self.has_vad = False
             print("[ASR] silero_vad not installed. VAD disabled (Termux Lite Mode).")
-        self.pa = pyaudio.PyAudio()
-        self.FORMAT = pyaudio.paInt16
+        if HAS_PYAUDIO:
+            self.pa = pyaudio.PyAudio()
+            self.FORMAT = pyaudio.paInt16
+        else:
+            self.pa = None
+            self.FORMAT = 8 # paInt16 is typically 8
         self.CHANNELS = 1
         self.RATE = 16000
         # Silero requires exactly 512 for 16kHz
@@ -188,7 +192,7 @@ class HybridVoiceEngine:
                     wav_io = io.BytesIO()
                     with wave.open(wav_io, 'wb') as wf:
                         wf.setnchannels(self.CHANNELS)
-                        wf.setsampwidth(self.pa.get_sample_size(self.FORMAT))
+                        wf.setsampwidth(2) # 16-bit PCM is 2 bytes
                         wf.setframerate(self.RATE)
                         wf.writeframes(audio_buffer)
                     wav_io.seek(0)
